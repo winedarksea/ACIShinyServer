@@ -1,0 +1,77 @@
+# IF YOU UPDATE THIS, MAKE SURE TO UPDATE IT IN THE CERT RENEWAL PIPELINE AS WELL
+api-version: 2018-10-01
+location: eastus
+name: shinyserver
+properties:
+  containers:
+  - name: nginx-with-ssl
+    properties:
+      image: nginx
+      ports:
+      - port: 80
+        protocol: TCP
+      - port: 443
+        protocol: TCP
+      resources:
+        requests:
+          cpu: 1.0
+          memoryInGB: 1
+      volumeMounts:
+      - name: nginx-config
+        mountPath: /etc/nginx
+      - name: shinyserver-cert
+        mountPath: /etc/letsencrypt
+      - name: shinyserver-letsencrypt
+        mountPath: /data/letsencrypt
+  - name: shinyserver
+    properties:
+      image: example.azurecr.io/yourimage:latest
+      ports:
+      - port: 8080
+        protocol: TCP
+      - port: 3838
+        protocol: TCP
+      resources:
+        requests:
+          cpu: 2
+          memoryInGB: 4
+      volumeMounts:
+      - name: shiny-logs
+        mountPath: /var/log/shiny-server
+  volumes:
+  - name: nginx-config
+    azureFile:
+      shareName: nginx-conf
+      storageAccountName: shinyserver
+      storageAccountKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  - name: shinyserver-cert
+    azureFile:
+      shareName: shinyserver-cert
+      storageAccountName: shinyserver
+      storageAccountKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  - name: shinyserver-letsencrypt
+    azureFile:
+      shareName: shinyserver-letsencrypt
+      storageAccountName: usvshinyserver
+      storageAccountKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  - name: shiny-logs
+    azureFile:
+      shareName: shiny-logs
+      storageAccountName: shinyserver
+      storageAccountKey: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  ipAddress:
+    ports:
+    - port: 80
+      protocol: TCP
+    - port: 443
+      protocol: TCP
+    type: Public
+    dnsNameLabel: example
+  osType: Linux
+  imageRegistryCredentials:
+    - server: example.azurecr.io
+      username: example
+      password: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  restartPolicy: OnFailure
+tags: null
+type: Microsoft.ContainerInstance/containerGroups

@@ -1,0 +1,75 @@
+# IF YOU UPDATE THIS, MAKE SURE TO UPDATE, if necessary, THE ONE IN THE CERT RENEWAL PIPELINE AS WELL
+
+trigger:
+- master
+
+resources:
+- repo: self
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'  - get this from a docker image template with your subscription
+  imageRepository: 'yourimage'
+  containerRegistry: 'example.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build job
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+# Build the Docker Image and Push to Azure Container Registry
+    - task: Docker@2
+      displayName: Build and push the image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+# Delete the existing version of the Container Instances
+    - task: AzureCLI@1
+      displayName: Delete Existing Container Instance
+      inputs:
+        azureSubscription: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' -this will be a random string of numbers... find with a Command Line template in your account
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az container delete -g <your-resource-group> --name shinyserver --subscription <your-subscription> --yes --verbose'
+# Create the container group WITH CERTBOT
+    - task: AzureCLI@1
+      displayName: Deploy with CERTBOT
+      inputs:
+        azureSubscription: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az container create --resource-group <your-resource-group> --subscription <your-subscription> --file $(Build.SourcesDirectory)/deploy-aci.yaml --verbose'
+# Wait, give it a chance to run, requires an Ubuntu or Linux hosted agent!
+    - task: AzureCLI@1
+      displayName: Wait briefly
+      inputs:
+        azureSubscription: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'sleep 60'
+# Delete the existing version of the Container Instances. Again.
+    - task: AzureCLI@1
+      displayName: Delete CERTBOT group
+      inputs:
+        azureSubscription: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az container delete -g <your-resource-group> --name shinyserver --subscription <your-subscription> --yes --verbose'
+# Create the container group removing certbot
+    - task: AzureCLI@1
+      displayName: Final build without Certbot
+      inputs:
+        azureSubscription: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az container create --resource-group <your-resource-group> --subscription <your-subscription> --file $(Build.SourcesDirectory)/deploy-aci-removeCertbot.yaml --verbose'
+
