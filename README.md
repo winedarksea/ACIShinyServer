@@ -1,6 +1,8 @@
 # (Shiny) App Server with Shiny Server, Nginx, Certbot, on Azure Container Instances, Azure File Shares, and Azure Pipelines.
 I'm posting this publically as 'food for thought' for anyone else doing a similar project. The one part I am unhappy with is SSL certificate renewal, which relies on an Azure pipeline running (weekly) to do add certbot container to the group, and then remove it. It works, but isn't pretty. That renewal pipeline is not included, but its identical to the pipeline here, less the docker build/push.
 
+https://syllepsis.live/2019/06/15/r-shiny-server-on-azure-container-instances-with-nginx-certbot-for-ssl-and-azure-pipelines-for-ci-cd/
+
 ## Why Use R Shiny?
 https://shiny.rstudio.com/gallery/
 
