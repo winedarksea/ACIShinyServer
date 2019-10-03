@@ -1,7 +1,8 @@
+# Gallons Dockerfile
 FROM rocker/shiny  
 
-# I'm installing every possiblea thing! Probably could clean this up a bit.
-RUN apt-get update && apt-get install -y \
+# I'm trying to instal every possible thing that may be needed
+RUN apt-get update -qq && apt-get -y --no-install-recommends install \
 	apt-transport-https \
 	build-essential \
 	gcc \
@@ -12,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 	libudunits2-dev \
 	libcairo2-dev \
 	libxt-dev \
-	libxml2 libxml2-dev \
+	libxml2-dev \
 	libtiff5-dev \
 	gdebi-core \
 	libgdal-dev \
@@ -23,21 +24,35 @@ RUN apt-get update && apt-get install -y \
 	wget \
 	libjq-dev \
 	r-base-dev \
-	libssl-dev 
+	libssl-dev \
+	libsqlite3-dev \
+	libmariadbd-dev \
+	libmariadb-client-lgpl-dev \
+	libpq-dev \
+	libssh2-1-dev \
+	unixodbc-dev \
+	libsasl2-dev
 RUN mkdir -p /var/lib/shiny-server/bookmarks/shiny
 
-# Download and install library, "tidyverse" alone might be good enough to start with.
-RUN R -e "install.packages(c('devtools','tidyverse','dplyr','ggplot2', 'ggmap', 'httr','jsonlite', \
-'data.table','knitr','kableExtra','png','censusr','tigris','sp','tidycensus', \
-'leaflet','geosphere','googleway','ranger', 'xgboost', 'ggthemes', 'rmarkdown', 'shiny'), repos='http://cran.rstudio.com/')"
+# Download and install library
+# 'dplyr','ggplot2', 'httr','jsonlite', 'lubridate'  - these are already in Tidyverse, unless things change
+RUN R -e "install.packages(c('devtools','ggmap','data.table','knitr','kableExtra','png', 'gridExtra', \
+'censusr','tigris','sp','tidycensus','leaflet','geosphere','googleway','ranger', 'xgboost', 'ggthemes', \
+'rmarkdown', 'shiny','tidyverse','e1071','randomForest','shinythemes', 'tidytext', \
+'topicmodels', 'wordcloud', 'AzureStor'), dependencies = c('Depends', 'Imports', 'LinkingTo'))"
+
 
 COPY shiny-server.conf /etc/shiny-server/shiny-server.conf
 
+# REMOVE SAMPLE APPS
 RUN rm -rf /srv/shiny-server/sample-apps
+RUN find /srv/shiny-server/ -name '[0-9][0-9]_*/*' -delete
+RUN find /srv/shiny-server/ -name '[0-9][0-9]_*' -exec rm -rv {} +
 RUN rm /srv/shiny-server/index.html
 
-ADD ./SampleApp /srv/shiny-server/SampleApp
-
+# move apps (placed at root of ShinyServer) to where they will be served from
+ADD ./yourApp /srv/shiny-server/yourApp
+ADD ./anotherApp /srv/shiny-server/anotherApp
 
 EXPOSE 3838
 EXPOSE 8080
@@ -48,5 +63,3 @@ USER shiny
 
 CMD ["/usr/bin/shiny-server.sh"] 
 
-
-# docker run --rm -p 3838:3838 gallons  
